@@ -82,21 +82,14 @@ jobs:
           echo "branch=$BRANCH" >> $GITHUB_OUTPUT
 
       - name: Open PR
-        uses: peter-evans/create-pull-request@v5
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          base: main
-          head: ${{ steps.branch.outputs.branch }}
-          title: "Approve prompt: ${{ steps.validate.outputs.title }}"
-          body: |
-            Auto‑generated PR that moves a user‑submitted prompt from `submissions/` to the public `prompts.json`.
-            - **Submitted by:** (anonymous)
-            - **Timestamp:** ${{ steps.validate.outputs.timestamp }}
-          draft: false
-
-      - name: Clean up submission file
-        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git rm "${{ steps.changed.outputs.file }}"
-          git commit -m "Remove processed submission ${{ steps.changed.outputs.file }}"
-          git push origin "${{ steps.branch.outputs.branch }}"
+          gh pr create \
+            --base main \
+            --head "${{ steps.branch.outputs.branch }}" \
+            --title "Approve prompt: ${{ steps.validate.outputs.title }}" \
+            --body "Auto-generated PR that moves a user-submitted prompt from \`submissions/\` to the public \`prompts.json\`.
+
+          - **Submitted by:** (anonymous)
+          - **Timestamp:** ${{ steps.validate.outputs.timestamp }}"

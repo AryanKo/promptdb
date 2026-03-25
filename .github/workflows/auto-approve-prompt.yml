@@ -72,6 +72,8 @@ jobs:
       - name: Create branch & commit
         id: branch
         run: |
+          git config user.name "PromptDB Bot"
+          git config user.email "promptdb-bot@users.noreply.github.com"
           BRANCH="approve-prompt-${{ github.sha }}"
           git checkout -b "$BRANCH"
           git add src/data/prompts.json

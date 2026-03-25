@@ -18,11 +18,15 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Get changed submission file
+      - name: Get pending submission file
         id: changed
         run: |
-          FILE=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} \
-                 | grep '^submissions/.*\.json$' | head -n1)
+          FILE=$(ls submissions/*.json 2>/dev/null | head -n1)
+          if [ -z "$FILE" ]; then
+            echo "No submission files found in submissions/ directory."
+            exit 1
+          fi
+          echo "Found submission: $FILE"
           echo "file=$FILE" >> $GITHUB_OUTPUT
 
       - name: Validate submission JSON

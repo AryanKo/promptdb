@@ -1,0 +1,47 @@
+[
+  {
+    "id": "1",
+    "title": "React Component Generator",
+    "description": "Generate a functional React component with prop types and Tailwind styling.",
+    "content": "Write a fully functional React component named [ComponentName]. It should use Tailwind CSS for styling, include PropTypes for type checking, and be fully responsive. Include inline comments explaining any complex logic.",
+    "tags": [
+      "react",
+      "frontend",
+      "code"
+    ]
+  },
+  {
+    "id": "2",
+    "title": "Creative Story Outline",
+    "description": "Create an outline for a short fantasy story.",
+    "content": "Create a 5-point outline for a short fantasy story set in a world where magic is powered by music. Include the protagonist, the main conflict, a rising action, a climax, and a resolution.",
+    "tags": [
+      "writing",
+      "fantasy",
+      "creative"
+    ]
+  },
+  {
+    "id": "3",
+    "title": "SQL Query Optimizer",
+    "description": "Optimize a given SQL query for better performance.",
+    "content": "Review the following SQL query and suggest optimizations for better performance. Focus on indexing strategies, reducing subqueries, and improving join efficiency. Explain your reasoning for each suggestion.\n\nQuery: [Insert Query Here]",
+    "tags": [
+      "database",
+      "sql",
+      "performance"
+    ]
+  },
+  {
+    "id": "1774461500087",
+    "title": "Ultimate SOC2 & Production AppSec Review",
+    "description": "A comprehensive senior application security engineer prompt that enforces real-world production hardening beyond basic SOC2 checkboxes.",
+    "content": "The best prompt is not “make it secure for production” and definitely not “do a SOC 2 review” by itself. That’s how people end up with a false sense of safety and a scan report full of red confetti. 🎪\r\n\r\nSOC 2 is not a coding standard.\r\nIt is mainly about organizational controls and process evidence, not “did you set CSP correctly?” or “is this endpoint vulnerable to auth bypass?”\r\n\r\nUse this instead\r\nYou are acting as a senior application security engineer and production-readiness reviewer.\r\n\r\nYour job is to harden this application for real-world production deployment, not to give vague advice.\r\n\r\nContext:\r\n- App type: [web app / SaaS / API / mobile backend / full-stack app]\r\n- Stack: [frameworks, language, hosting, DB, auth provider, reverse proxy, cloud]\r\n- Deployment target: [Vercel / Docker / AWS / GCP / VPS / Kubernetes / etc.]\r\n- Handles sensitive data: [yes/no + what kind]\r\n- Regions/users: [EU / US / global]\r\n- Auth model: [session / JWT / OAuth / clerk / custom]\r\n- Threat assumptions: [public internet, logged-in users, admins, file upload, payments, webhooks, etc.]\r\n\r\nSecurity objectives:\r\n1. Review the codebase against:\r\n   - OWASP ASVS\r\n   - OWASP Top 10\r\n   - CWE Top 25\r\n   - secure authentication / authorization principles\r\n   - secure session and cookie handling\r\n   - secure HTTP headers and browser protections\r\n   - secure secrets/config management\r\n   - secure API design\r\n   - injection prevention\r\n   - SSRF / CSRF / XSS / IDOR / broken access control / RCE / path traversal defenses\r\n   - file upload and deserialization risks\r\n   - dependency and supply-chain risks\r\n   - logging / monitoring / rate limiting / abuse prevention\r\n   - GDPR-relevant basics if personal data is handled\r\n\r\n2. Do NOT say the app is “secure” or “production-ready” without evidence.\r\n3. Find concrete vulnerabilities, insecure defaults, missing protections, and weak patterns.\r\n4. For each finding, provide:\r\n   - Severity: Critical / High / Medium / Low\r\n   - Exact location: file + function + line or component\r\n   - Why it is a risk\r\n   - Exploitation scenario\r\n   - Exact remediation\r\n   - Code patch or precise code change\r\n5. Explicitly check for missing or weak security headers, including:\r\n   - Content-Security-Policy\r\n   - Strict-Transport-Security\r\n   - X-Content-Type-Options\r\n   - Referrer-Policy\r\n   - Permissions-Policy\r\n   - frame-ancestors or X-Frame-Options\r\n   - secure cookie flags: Secure, HttpOnly, SameSite\r\n6. Produce secure default configurations for:\r\n   - reverse proxy / server headers\r\n   - cookies / sessions\r\n   - CORS\r\n   - rate limiting\r\n   - environment variables\r\n   - error handling\r\n   - logging and auditability\r\n7. Then implement the fixes directly in the codebase.\r\n8. After implementing, run a second-pass review and list remaining risks and tradeoffs.\r\n9. Output in this structure only:\r\n\r\nA. Threat model summary  \r\nB. Findings table  \r\nC. Code changes made  \r\nD. Required config / infra changes  \r\nE. Security headers checklist  \r\nF. Remaining risks  \r\nG. Deployment go-live checklist\r\n\r\nImportant rules:\r\n- Prefer minimal, production-safe changes over large rewrites unless a rewrite is necessary.\r\n- Never invent libraries or fake configs.\r\n- If something depends on framework or hosting specifics, inspect the project and adapt precisely.\r\n- If information is missing, state assumptions clearly and proceed with best-practice defaults.\r\n- Be strict and pessimistic.",
+    "tags": [
+      "security",
+      "soc2",
+      "appsec",
+      "production"
+    ]
+  }
+]

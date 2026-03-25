@@ -1,0 +1,92 @@
+name: Auto‑Approve Prompt Submissions
+
+on:
+  push:
+    paths:
+      - 'submissions/*.json'
+
+jobs:
+  approve:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get changed submission file
+        id: changed
+        run: |
+          FILE=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} \
+                 | grep '^submissions/.*\.json$' | head -n1)
+          echo "file=$FILE" >> $GITHUB_OUTPUT
+          echo "content=$(cat $FILE)" >> $GITHUB_OUTPUT
+
+      - name: Validate submission JSON
+        id: validate
+        env:
+          SUBMIT_CONTENT: ${{ steps.changed.outputs.content }}
+        run: |
+          echo "$SUBMIT_CONTENT" | jq -e '
+            .title and .description and .content and .tags and .timestamp
+            and (.title|length) > 3
+            and (.description|length) > 10
+            and (.content|length) > 10
+          ' > /dev/null || {
+            echo "Invalid submission payload"
+            exit 1
+          }
+
+          BAD_WORDS="badword1|badword2|spam|test"
+          if echo "$SUBMIT_CONTENT" | grep -iE "$BAD_WORDS"; then
+            echo "Profanity/Spam detected – rejecting"
+            exit 1
+          fi
+
+          echo "title=$(echo "$SUBMIT_CONTENT" | jq -r .title)" >> $GITHUB_OUTPUT
+          echo "submission=$(echo "$SUBMIT_CONTENT")" >> $GITHUB_OUTPUT
+
+      - name: Add prompt to prompts.json
+        env:
+          PROMPT_JSON: ${{ steps.validate.outputs.submission }}
+        run: |
+          PROMPTS_FILE="src/data/prompts.json"
+          if [ ! -f "$PROMPTS_FILE" ]; then
+            echo "[]">"$PROMPTS_FILE"
+          fi
+          TMP=$(mktemp)
+          jq ". += [$PROMPT_JSON]" "$PROMPTS_FILE" | jq 'walk(if type == "object" and has("status") then del(.status) else . end)' > "$TMP" && mv "$TMP" "$PROMPTS_FILE"
+
+      - name: Create branch & commit
+        id: branch
+        run: |
+          BRANCH="approve-prompt-${{ github.sha }}"
+          git checkout -b "$BRANCH"
+          git add src/data/prompts.json
+          git commit -m "Approve prompt: ${{ steps.validate.outputs.title }}"
+          git push origin "$BRANCH"
+          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+
+      - name: Open PR
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          base: main
+          head: ${{ steps.branch.outputs.branch }}
+          title: "Approve prompt: ${{ steps.validate.outputs.title }}"
+          body: |
+            Auto‑generated PR that moves a user‑submitted prompt from `submissions/` to the public `prompts.json`.
+            - **Submitted by:** (anonymous)
+            - **Timestamp:** ${{ fromJson(steps.validate.outputs.submission).timestamp }}
+          draft: false
+
+      - name: Clean up submission file
+        if: success()
+        run: |
+          git rm "${{ steps.changed.outputs.file }}"
+          git commit -m "Remove processed submission ${{ steps.changed.outputs.file }}"
+          git push origin "${{ steps.branch.outputs.branch }}"

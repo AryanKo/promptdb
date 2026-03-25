@@ -24,42 +24,46 @@ jobs:
           FILE=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} \
                  | grep '^submissions/.*\.json$' | head -n1)
           echo "file=$FILE" >> $GITHUB_OUTPUT
-          echo "content=$(cat $FILE)" >> $GITHUB_OUTPUT
 
       - name: Validate submission JSON
         id: validate
         env:
-          SUBMIT_CONTENT: ${{ steps.changed.outputs.content }}
+          FILE_PATH: ${{ steps.changed.outputs.file }}
         run: |
-          echo "$SUBMIT_CONTENT" | jq -e '
+          if [ -z "$FILE_PATH" ] || [ ! -f "$FILE_PATH" ]; then
+            echo "No valid submission file found."
+            exit 1
+          fi
+
+          jq -e '
             .title and .description and .content and .tags and .timestamp
             and (.title|length) > 3
             and (.description|length) > 10
             and (.content|length) > 10
-          ' > /dev/null || {
+          ' "$FILE_PATH" > /dev/null || {
             echo "Invalid submission payload"
             exit 1
           }
 
           BAD_WORDS="badword1|badword2|spam|test"
-          if echo "$SUBMIT_CONTENT" | grep -iE "$BAD_WORDS"; then
+          if grep -iE "$BAD_WORDS" "$FILE_PATH"; then
             echo "Profanity/Spam detected – rejecting"
             exit 1
           fi
 
-          echo "title=$(echo "$SUBMIT_CONTENT" | jq -r .title)" >> $GITHUB_OUTPUT
-          echo "submission=$(echo "$SUBMIT_CONTENT")" >> $GITHUB_OUTPUT
+          echo "title=$(jq -r .title "$FILE_PATH")" >> $GITHUB_OUTPUT
+          echo "timestamp=$(jq -r .timestamp "$FILE_PATH")" >> $GITHUB_OUTPUT
 
       - name: Add prompt to prompts.json
         env:
-          PROMPT_JSON: ${{ steps.validate.outputs.submission }}
+          FILE_PATH: ${{ steps.changed.outputs.file }}
         run: |
           PROMPTS_FILE="src/data/prompts.json"
           if [ ! -f "$PROMPTS_FILE" ]; then
             echo "[]">"$PROMPTS_FILE"
           fi
           TMP=$(mktemp)
-          jq ". += [$PROMPT_JSON]" "$PROMPTS_FILE" | jq 'walk(if type == "object" and has("status") then del(.status) else . end)' > "$TMP" && mv "$TMP" "$PROMPTS_FILE"
+          jq -s '.[0] + [.[1] | del(.status)]' "$PROMPTS_FILE" "$FILE_PATH" > "$TMP" && mv "$TMP" "$PROMPTS_FILE"
 
       - name: Create branch & commit
         id: branch
@@ -81,7 +85,7 @@ jobs:
           body: |
             Auto‑generated PR that moves a user‑submitted prompt from `submissions/` to the public `prompts.json`.
             - **Submitted by:** (anonymous)
-            - **Timestamp:** ${{ fromJson(steps.validate.outputs.submission).timestamp }}
+            - **Timestamp:** ${{ steps.validate.outputs.timestamp }}
           draft: false
 
       - name: Clean up submission file

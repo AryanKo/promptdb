@@ -17,79 +17,77 @@ jobs:
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
 
-      - name: Get pending submission file
-        id: changed
-        run: |
-          FILE=$(ls submissions/*.json 2>/dev/null | head -n1)
-          if [ -z "$FILE" ]; then
-            echo "No submission files found in submissions/ directory."
-            exit 1
-          fi
-          echo "Found submission: $FILE"
-          echo "file=$FILE" >> $GITHUB_OUTPUT
-
-      - name: Validate submission JSON
-        id: validate
-        env:
-          FILE_PATH: ${{ steps.changed.outputs.file }}
-        run: |
-          if [ -z "$FILE_PATH" ] || [ ! -f "$FILE_PATH" ]; then
-            echo "No valid submission file found."
-            exit 1
-          fi
-
-          jq -e '
-            .title and .description and .content and .tags and .timestamp
-            and (.title|length) > 3
-            and (.description|length) > 10
-            and (.content|length) > 10
-          ' "$FILE_PATH" > /dev/null || {
-            echo "Invalid submission payload"
-            exit 1
-          }
-
-          BAD_WORDS="badword1|badword2|spam|test"
-          if grep -iE "$BAD_WORDS" "$FILE_PATH"; then
-            echo "Profanity/Spam detected – rejecting"
-            exit 1
-          fi
-
-          echo "title=$(jq -r .title "$FILE_PATH")" >> $GITHUB_OUTPUT
-          echo "timestamp=$(jq -r .timestamp "$FILE_PATH")" >> $GITHUB_OUTPUT
-
-      - name: Add prompt to prompts.json
-        env:
-          FILE_PATH: ${{ steps.changed.outputs.file }}
-        run: |
-          PROMPTS_FILE="src/data/prompts.json"
-          if [ ! -f "$PROMPTS_FILE" ]; then
-            echo "[]">"$PROMPTS_FILE"
-          fi
-          TMP=$(mktemp)
-          jq -s '.[0] + [.[1] | del(.status)]' "$PROMPTS_FILE" "$FILE_PATH" > "$TMP" && mv "$TMP" "$PROMPTS_FILE"
-
-      - name: Create branch & commit
-        id: branch
-        run: |
-          git config user.name "PromptDB Bot"
-          git config user.email "promptdb-bot@users.noreply.github.com"
-          BRANCH="approve-prompt-${{ github.sha }}"
-          git checkout -b "$BRANCH"
-          git add src/data/prompts.json
-          git commit -m "Approve prompt: ${{ steps.validate.outputs.title }}"
-          git push origin "$BRANCH"
-          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
-
-      - name: Open PR
+      - name: Process submissions
+        id: process
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh pr create \
-            --base main \
-            --head "${{ steps.branch.outputs.branch }}" \
-            --title "Approve prompt: ${{ steps.validate.outputs.title }}" \
-            --body "Auto-generated PR that moves a user-submitted prompt from \`submissions/\` to the public \`prompts.json\`.
-
-          - **Submitted by:** (anonymous)
-          - **Timestamp:** ${{ steps.validate.outputs.timestamp }}"
+          PROMPTS_FILE="src/data/prompts.json"
+          if [ ! -f "$PROMPTS_FILE" ]; then echo "[]" > "$PROMPTS_FILE"; fi
+          
+          # Find all json files
+          FILES=$(ls submissions/*.json 2>/dev/null || true)
+          if [ -z "$FILES" ]; then
+            echo "No submission files found."
+            exit 0
+          fi
+          
+          git config user.name "PromptDB Bot"
+          git config user.email "promptdb-bot@users.noreply.github.com"
+          BRANCH="approve-prompts-${{ github.sha }}"
+          git checkout -b "$BRANCH"
+          
+          PROCESSED_COUNT=0
+          
+          for FILE_PATH in $FILES; do
+            echo "Processing $FILE_PATH"
+            
+            # Validate
+            if ! jq -e '
+              .title and .description and .content and .tags and .timestamp
+              and (.title|length) > 3
+              and (.description|length) > 10
+              and (.content|length) > 10
+            ' "$FILE_PATH" > /dev/null; then
+              echo "Invalid submission payload in $FILE_PATH"
+              git rm -f "$FILE_PATH"
+              continue
+            fi
+            
+            # BAD_WORDS fix
+            BAD_WORDS="\bbadword1\b|\bbadword2\b|\bspam\b"
+            if grep -iE "$BAD_WORDS" "$FILE_PATH"; then
+              echo "Profanity/Spam detected – rejecting $FILE_PATH"
+              git rm -f "$FILE_PATH"
+              continue
+            fi
+            
+            # Append to prompts.json
+            TMP=$(mktemp)
+            jq -s '.[0] + [.[1] | del(.status)]' "$PROMPTS_FILE" "$FILE_PATH" > "$TMP" && mv "$TMP" "$PROMPTS_FILE"
+            
+            git rm -f "$FILE_PATH"
+            PROCESSED_COUNT=$((PROCESSED_COUNT+1))
+          done
+          
+          if [ "$PROCESSED_COUNT" -gt 0 ]; then
+             git add src/data/prompts.json
+             git commit -m "Process $PROCESSED_COUNT prompt submission(s)"
+             git push origin "$BRANCH"
+             
+             BODY=$(cat << 'EOF'
+          Auto-generated PR that moves user-submitted prompts from `submissions/` to the public `prompts.json`.
+          
+          - **Submitted by:** (anonymous contributors)
+          EOF
+          )
+             gh pr create --base main --head "$BRANCH" --title "Approve $PROCESSED_COUNT new prompt(s)" --body "$BODY"
+          else
+             if ! git diff --cached --quiet; then
+               git commit -m "Remove invalid prompt submissions"
+               git push origin "$BRANCH"
+               gh pr create --base main --head "$BRANCH" --title "Remove invalid submissions" --body "Removed submissions that failed validation."
+             fi
+          fi

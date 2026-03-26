@@ -10,6 +10,7 @@ export default function SubmissionForm() {
   });
   const [status, setStatus] = useState('idle'); // idle, submitting, success, error
   const [errorMessage, setErrorMessage] = useState('');
+  const [lastSubmitTime, setLastSubmitTime] = useState(0);
 
   const handleChange = (e) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -17,6 +18,14 @@ export default function SubmissionForm() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    const now = Date.now();
+    if (now - lastSubmitTime < 10000) {
+      setStatus('error');
+      setErrorMessage('Please wait a few seconds before submitting again.');
+      return;
+    }
+    
     setStatus('submitting');
     setErrorMessage('');
 
@@ -45,6 +54,7 @@ export default function SubmissionForm() {
       }
 
       setStatus('success');
+      setLastSubmitTime(Date.now());
       setFormData({ title: '', description: '', content: '', tags: '' });
       setTimeout(() => setStatus('idle'), 5000);
     } catch (err) {
@@ -60,14 +70,14 @@ export default function SubmissionForm() {
       
       {status === 'success' && (
         <div className="mb-4 p-4 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg flex items-center gap-2">
-          <CheckCircle2 size={20} className="text-emerald-400 text-shrink-0" />
+          <CheckCircle2 size={20} className="flex-shrink-0" />
           <p className="text-sm font-medium">Prompt submitted successfully! It will be reviewed shortly.</p>
         </div>
       )}
 
       {status === 'error' && (
         <div className="mb-4 p-4 bg-red-500/10 text-red-400 border border-red-500/20 rounded-lg flex items-center gap-2">
-          <AlertCircle size={20} className="text-red-400 text-shrink-0" />
+          <AlertCircle size={20} className="flex-shrink-0" />
           <p className="text-sm font-medium">{errorMessage}</p>
         </div>
       )}

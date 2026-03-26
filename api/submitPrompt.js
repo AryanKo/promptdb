@@ -11,6 +11,10 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Title, description, and content are required' });
     }
 
+    if (content.length > 50000) {
+      return res.status(400).json({ error: 'Content is too large (max 50,000 characters)' });
+    }
+
     const githubToken = process.env.GITHUB_TOKEN;
     const githubRepo = process.env.GITHUB_REPO; // format: "owner/repo"
 

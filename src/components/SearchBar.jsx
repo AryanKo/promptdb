@@ -8,7 +8,7 @@ export default function SearchBar({ value, onChange }) {
       </div>
       <input
         type="text"
-        className="block w-full pl-11 pr-4 py-3.5 bg-slate-900 border border-slate-800 text-white rounded-2xl leading-5 bg-transparent placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm shadow-sm transition-shadow focus:shadow-md"
+        className="block w-full pl-11 pr-4 py-3.5 bg-slate-900 border border-slate-800 text-white rounded-2xl leading-5 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm shadow-sm transition-shadow focus:shadow-md"
         placeholder="Search prompts by keyword, description, or tag..."
         value={value}
         onChange={(e) => onChange(e.target.value)}
